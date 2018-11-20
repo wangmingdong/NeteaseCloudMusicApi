@@ -1,4 +1,7 @@
 const fs = require('fs')
+//使用nodejs自带的http、https模块
+var https = require('https');
+var http = require('http');
 const path = require('path')
 const express = require('express')
 const bodyParser = require('body-parser')
@@ -16,6 +19,10 @@ exec('npm info NeteaseCloudMusicApi version', (err, stdout, stderr) => {
         }
     }
 })
+
+var privateKey  = fs.readFileSync('sslcert/cert.key', 'utf8');
+var certificate = fs.readFileSync('sslcert/cert.crt', 'utf8');
+var credentials = {key: privateKey, cert: certificate};
 
 const app = express()
 
@@ -83,9 +90,26 @@ fs.readdirSync(path.join(__dirname, 'module')).reverse().forEach(file => {
 })
 
 const port = process.env.PORT || 3000
+const httpsPort = 3001
+var httpServer = http.createServer(app);
+var httpsServer = https.createServer(credentials, app);
 
-app.server = app.listen(port, () => {
-    console.log(`server running @ http://localhost:${port}`)
+//可以根据请求判断是http还是https
+app.get('/', function (req, res) {
+    if(req.protocol === 'https') {
+        res.status(200).send('This is https visit!');
+    }
+    else {
+        res.status(200).send('This is http visit!');
+    }
+});
+
+app.server = httpsServer.listen(port, () => {
+    console.log(`server running @ https://localhost:${port}`)
+})
+
+httpServer.listen(httpsPort, () => {
+    console.log(`server running @ http://localhost:${httpsPort}`)
 })
 
 module.exports = app
